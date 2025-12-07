@@ -1,7 +1,7 @@
-# terraform-provider-gopass Makefile
+# opentofu-provider-gopass Makefile
 # ===================================
 
-BINARY_NAME = terraform-provider-gopass
+BINARY_NAME = opentofu-provider-gopass
 VERSION     = 0.1.0
 OS_ARCH     = $(shell go env GOOS)_$(shell go env GOARCH)
 
@@ -15,7 +15,7 @@ REGISTRY_PATH = registry.opentofu.org/istr/gopass/$(VERSION)/$(OS_ARCH)
 .PHONY: help build install install-tofu install-tf clean test fmt lint docs
 
 help:
-	@echo "terraform-provider-gopass"
+	@echo "opentofu-provider-gopass"
 	@echo ""
 	@echo "Build targets:"
 	@echo "  make build        Build the provider binary"

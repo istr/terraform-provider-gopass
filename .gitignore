@@ -1,5 +1,5 @@
 # Binaries
-terraform-provider-gopass
+opentofu-provider-gopass
 *.exe
 dist/
 
