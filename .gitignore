@@ -1,0 +1,33 @@
+# Binaries
+terraform-provider-gopass
+*.exe
+dist/
+
+# Go
+*.test
+*.out
+go.sum
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Terraform/OpenTofu
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test artifacts
+coverage.html
+coverage.out
