@@ -6,6 +6,8 @@ package provider
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -17,14 +19,18 @@ import (
 // GopassClient wraps the gopass library for secret access.
 // It maintains a single store instance for the lifetime of the provider.
 type GopassClient struct {
-	store gopass.Store
-	mu    sync.Mutex
+	store     gopass.Store
+	storePath string
+	mu        sync.Mutex
 }
 
 // NewGopassClient creates a new gopass client.
 // The store is lazily initialized on first access.
-func NewGopassClient() *GopassClient {
-	return &GopassClient{}
+// If storePath is non-empty, it will be used instead of the default gopass configuration.
+func NewGopassClient(storePath string) *GopassClient {
+	return &GopassClient{
+		storePath: storePath,
+	}
 }
 
 // ensureStore initializes the gopass store if not already done.
@@ -36,16 +42,98 @@ func (c *GopassClient) ensureStore(ctx context.Context) error {
 		return nil
 	}
 
-	tflog.Debug(ctx, "Initializing gopass store")
+	tflog.Debug(ctx, "Initializing gopass store", map[string]interface{}{
+		"configured_path": c.storePath,
+	})
+
+	// If a custom store path is configured, set PASSWORD_STORE_DIR
+	// This is the standard way to tell gopass/pass where to find the store
+	if c.storePath != "" {
+		// Expand ~ if present
+		expandedPath := c.storePath
+		if strings.HasPrefix(expandedPath, "~/") {
+			home, err := os.UserHomeDir()
+			if err != nil {
+				return fmt.Errorf("failed to expand home directory: %w", err)
+			}
+			expandedPath = filepath.Join(home, expandedPath[2:])
+		}
+
+		// Verify the path exists
+		if _, err := os.Stat(expandedPath); os.IsNotExist(err) {
+			return fmt.Errorf("gopass store not found at configured path: %s\n\n"+
+				"Please verify the path exists and contains a valid gopass/pass store, "+
+				"or remove the store_path configuration to use gopass defaults", expandedPath)
+		}
+
+		tflog.Debug(ctx, "Setting PASSWORD_STORE_DIR", map[string]interface{}{
+			"path": expandedPath,
+		})
+		os.Setenv("PASSWORD_STORE_DIR", expandedPath)
+	}
 
 	store, err := api.New(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to initialize gopass store: %w", err)
+		// Provide helpful error message
+		return c.wrapStoreError(err)
+	}
+
+	if store == nil {
+		return fmt.Errorf("gopass store initialization returned nil\n\n" +
+			"This usually means gopass is not properly configured. Please run:\n" +
+			"  gopass init\n\n" +
+			"Or specify a store_path in the provider configuration:\n" +
+			"  provider \"gopass\" {\n" +
+			"    store_path = \"/path/to/your/password-store\"\n" +
+			"  }")
 	}
 
 	c.store = store
-	tflog.Debug(ctx, "Gopass store initialized")
+	tflog.Debug(ctx, "Gopass store initialized successfully")
 	return nil
+}
+
+// wrapStoreError provides helpful context for common gopass initialization errors.
+func (c *GopassClient) wrapStoreError(err error) error {
+	errStr := err.Error()
+
+	// Check for common error patterns and provide helpful messages
+	if strings.Contains(errStr, "no such file or directory") ||
+		strings.Contains(errStr, "does not exist") {
+		return fmt.Errorf("gopass store not found: %w\n\n"+
+			"No gopass password store was found. Possible solutions:\n\n"+
+			"1. Initialize a new store:\n"+
+			"   gopass init\n\n"+
+			"2. Specify the store location in the provider configuration:\n"+
+			"   provider \"gopass\" {\n"+
+			"     store_path = \"/home/user/.password-store\"\n"+
+			"   }\n\n"+
+			"3. Set the PASSWORD_STORE_DIR environment variable:\n"+
+			"   export PASSWORD_STORE_DIR=/path/to/store\n\n"+
+			"4. Check your gopass configuration:\n"+
+			"   cat ~/.config/gopass/config", err)
+	}
+
+	if strings.Contains(errStr, "permission denied") {
+		return fmt.Errorf("gopass store access denied: %w\n\n"+
+			"Unable to access the gopass store due to permission issues.\n"+
+			"Please check file permissions on your password store directory.", err)
+	}
+
+	if strings.Contains(errStr, "gpg") || strings.Contains(errStr, "GPG") {
+		return fmt.Errorf("GPG error during gopass initialization: %w\n\n"+
+			"There was a problem with GPG. Please ensure:\n"+
+			"- gpg-agent is running\n"+
+			"- Your GPG key is available\n"+
+			"- If using a hardware token, it is connected", err)
+	}
+
+	// Generic error with context
+	return fmt.Errorf("failed to initialize gopass store: %w\n\n"+
+		"If you have a non-standard gopass configuration, try specifying the store path:\n"+
+		"  provider \"gopass\" {\n"+
+		"    store_path = \"/path/to/your/password-store\"\n"+
+		"  }", err)
 }
 
 // Close closes the gopass store and releases resources.

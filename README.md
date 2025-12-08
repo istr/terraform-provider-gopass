@@ -56,9 +56,20 @@ terraform {
   }
 }
 
-# No configuration needed - uses gopass's native config
+# Default: uses gopass's native configuration
 provider "gopass" {}
+
+# Or specify a custom store path
+provider "gopass" {
+  store_path = "/home/user/.password-store"
+}
 ```
+
+#### Provider Arguments
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `store_path` | string | no | Path to the gopass password store. If not set, uses gopass default configuration from `~/.config/gopass/config` or the `PASSWORD_STORE_DIR` environment variable. |
 
 ### Reading a Credential Set (gopassenv style)
 
@@ -244,6 +255,46 @@ make lint
 | External data source | ✅ Yes | ✅ Yes | ✅ Yes |
 | SOPS provider | ✅ Yes | ✅ Yes | Via GPG |
 | State encryption | ✅ Yes (encrypted) | N/A | Via KMS |
+
+## Troubleshooting
+
+### "gopass store not found"
+
+If you see an error like:
+```
+gopass store not found: ...
+```
+
+Possible solutions:
+
+1. **Initialize gopass** (if not done yet):
+   ```bash
+   gopass init
+   ```
+
+2. **Specify store path explicitly** in provider configuration:
+   ```hcl
+   provider "gopass" {
+     store_path = "/home/user/.password-store"
+   }
+   ```
+
+3. **Set environment variable**:
+   ```bash
+   export PASSWORD_STORE_DIR=/path/to/store
+   ```
+
+4. **Check your gopass configuration**:
+   ```bash
+   cat ~/.config/gopass/config
+   ```
+
+### GPG/Hardware Token Issues
+
+If GPG fails during secret access:
+- Ensure `gpg-agent` is running
+- If using a hardware token, verify it's connected
+- Check that your GPG key is available: `gpg --list-secret-keys`
 
 ## API Stability Note
 

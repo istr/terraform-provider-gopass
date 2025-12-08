@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 // Ensure GopassProvider satisfies various provider interfaces.
@@ -25,8 +26,9 @@ type GopassProvider struct {
 }
 
 // GopassProviderModel describes the provider data model.
-// Currently empty as gopass uses its own configuration.
-type GopassProviderModel struct{}
+type GopassProviderModel struct {
+	StorePath types.String `tfsdk:"store_path"`
+}
 
 // New creates a new provider instance.
 func New(version string) func() provider.Provider {
@@ -65,6 +67,14 @@ token (YubiKey, Nitrokey), you will be prompted for PIN/touch during each Terraf
 ## Example Usage
 
 ` + "```hcl" + `
+# Use default gopass configuration
+provider "gopass" {}
+
+# Or specify a custom store path
+provider "gopass" {
+  store_path = "/path/to/your/password-store"
+}
+
 # Read credentials as ephemeral values
 ephemeral "gopass_env" "db" {
   path = "infrastructure/database"
@@ -76,6 +86,15 @@ provider "postgresql" {
 }
 ` + "```" + `
 `,
+		Attributes: map[string]schema.Attribute{
+			"store_path": schema.StringAttribute{
+				Description: "Path to the gopass password store. If not set, gopass uses its default " +
+					"configuration from ~/.config/gopass/config or the PASSWORD_STORE_DIR environment variable.",
+				MarkdownDescription: "Path to the gopass password store. If not set, gopass uses its default " +
+					"configuration from `~/.config/gopass/config` or the `PASSWORD_STORE_DIR` environment variable.",
+				Optional: true,
+			},
+		},
 	}
 }
 
@@ -87,12 +106,19 @@ func (p *GopassProvider) Configure(ctx context.Context, req provider.ConfigureRe
 		return
 	}
 
-	// Create gopass client - uses native gopass library
-	client := NewGopassClient()
+	// Extract store path if configured
+	var storePath string
+	if !config.StorePath.IsNull() && !config.StorePath.IsUnknown() {
+		storePath = config.StorePath.ValueString()
+	}
 
-	// Make client available to resources and ephemeral resources
+	// Create gopass client - uses native gopass library
+	client := NewGopassClient(storePath)
+
+	// Make client available to data sources, resources, and ephemeral resources
 	resp.DataSourceData = client
 	resp.ResourceData = client
+	resp.EphemeralResourceData = client
 }
 
 // Resources returns an empty slice - this provider only provides ephemeral resources.
