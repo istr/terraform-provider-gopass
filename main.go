@@ -9,7 +9,7 @@ import (
 	"log"
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
-	"git.ingo-struck.com/opentofu/opentofu-provider-gopass/internal/provider"
+	"git.ingo-struck.com/opentofu/terraform-provider-gopass/internal/provider"
 )
 
 // version is set via ldflags at build time

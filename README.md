@@ -1,4 +1,4 @@
-# opentofu-provider-gopass
+# terraform-provider-gopass
 
 OpenTofu/Terraform provider for reading secrets from [gopass](https://github.com/gopasspw/gopass)
 as **ephemeral values** - credentials that are never stored in state or plan files.
@@ -24,8 +24,8 @@ as **ephemeral values** - credentials that are never stored in state or plan fil
 ### From Source
 
 ```bash
-git clone https://git.ingo-struck.com/opentofu/opentofu-provider-gopass.git
-cd opentofu-provider-gopass
+git clone https://git.ingo-struck.com/opentofu/terraform-provider-gopass.git
+cd terraform-provider-gopass
 make install
 ```
 
@@ -33,11 +33,11 @@ make install
 
 ```bash
 # Build
-go build -o opentofu-provider-gopass
+go build -o terraform-provider-gopass
 
 # Install for OpenTofu
 mkdir -p ~/.local/share/opentofu/plugins/registry.opentofu.org/istr/gopass/0.1.0/linux_amd64
-cp opentofu-provider-gopass ~/.local/share/opentofu/plugins/registry.opentofu.org/istr/gopass/0.1.0/linux_amd64/
+cp terraform-provider-gopass ~/.local/share/opentofu/plugins/registry.opentofu.org/istr/gopass/0.1.0/linux_amd64/
 ```
 
 ## Usage
@@ -162,7 +162,7 @@ Reads all secrets under a path as a key-value map.
 ┌─────────────────────────────────────────────────────────────┐
 │                     OpenTofu/Terraform                      │
 ├─────────────────────────────────────────────────────────────┤
-│                    opentofu-provider-gopass                │
+│                    terraform-provider-gopass                │
 │  ┌─────────────────┐  ┌──────────────────────────────────┐  │
 │  │ GopassClient    │  │ Ephemeral Resources              │  │
 │  │                 │  │  - gopass_secret (single value)  │  │
@@ -217,8 +217,8 @@ Reads all secrets under a path as a key-value map.
 
 ```bash
 # Setup
-git clone https://git.ingo-struck.com/opentofu/opentofu-provider-gopass.git
-cd opentofu-provider-gopass
+git clone https://git.ingo-struck.com/opentofu/terraform-provider-gopass.git
+cd terraform-provider-gopass
 go mod download
 
 # Build & Install

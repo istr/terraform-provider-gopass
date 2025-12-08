@@ -1,4 +1,4 @@
-module git.ingo-struck.com/opentofu/opentofu-provider-gopass
+module git.ingo-struck.com/opentofu/terraform-provider-gopass
 
 go 1.22.1
 
