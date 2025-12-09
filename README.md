@@ -5,12 +5,14 @@ as **ephemeral values** - credentials that are never stored in state or plan fil
 
 ## Features
 
-- 🔐 **Ephemeral-only**: Secrets exist only during plan/apply, never persisted
+- 🔐 **Ephemeral-only reading**: Secrets exist only during plan/apply, never persisted
+- ✍️ **Write-only storage**: Store generated credentials to gopass without state leakage
 - 🔗 **Native gopass integration**: Links directly against gopass Go library - no subprocess spawning
 - 🔑 **Hardware token support**: Works with YubiKey, Nitrokey, etc. via GPG
-- 📁 **Two access patterns**:
-  - `gopass_secret`: Read single secret by path
-  - `gopass_env`: Read credential set as key-value map (like `gopassenv`)
+- 📁 **Multiple access patterns**:
+  - `ephemeral gopass_secret`: Read single secret by path
+  - `ephemeral gopass_env`: Read credential set as key-value map (like `gopassenv`)
+  - `resource gopass_secret`: Write secrets with write-only attributes
 - 🔄 **No state leakage**: Provider credentials don't end up in terraform.tfstate
 
 ## Requirements
@@ -142,6 +144,98 @@ Reads all secrets under a path as a key-value map.
 | Name | Type | Description |
 |------|------|-------------|
 | `values` | map(string) | Map of secret names to values |
+
+## Managed Resources
+
+### gopass_secret (resource)
+
+Writes a secret to the gopass store using **write-only attributes**. The secret value is never stored in Terraform state.
+
+This is ideal for storing generated credentials like API keys or database passwords.
+
+#### Example: Store API Key
+
+```hcl
+# When Scaleway creates an API key, store it in gopass
+resource "scaleway_iam_api_key" "infra" {
+  application_id = scaleway_iam_application.infra.id
+  description    = "Terraform infrastructure manager"
+}
+
+resource "gopass_secret" "scw_secret_key" {
+  path             = "env/terraform/scaleway/infra-manager/SCW_SECRET_KEY"
+  value_wo         = scaleway_iam_api_key.infra.secret_key
+  value_wo_version = 1
+}
+```
+
+#### Example: Store Generated Password
+
+```hcl
+# Generate a random password and store it in gopass
+ephemeral "random_password" "db_admin" {
+  length  = 32
+  special = true
+}
+
+resource "gopass_secret" "db_password" {
+  path             = "infrastructure/database/admin_password"
+  value_wo         = ephemeral.random_password.db_admin.result
+  value_wo_version = 1
+}
+
+# Use the password in the database
+resource "postgresql_role" "admin" {
+  name     = "admin"
+  password = ephemeral.random_password.db_admin.result
+}
+```
+
+#### Arguments
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `path` | string | yes | Path in the gopass store where the secret will be written |
+| `value_wo` | string | no | The secret value to write. **Write-only** - never stored in state. Accepts ephemeral values. |
+| `value_wo_version` | int | no | Version number. Increment to trigger a secret update when `value_wo` changes. |
+| `delete_on_remove` | bool | no | Whether to delete the secret from gopass on destroy. Default: `true` |
+
+#### Attributes
+
+| Name | Type | Description |
+|------|------|-------------|
+| `id` | string | The path of the secret |
+| `revision_count` | int | Number of gopass revisions (for drift detection) |
+
+#### Drift Detection
+
+The provider tracks the number of revisions in gopass to detect external changes:
+
+- If someone modifies the secret outside of Terraform, the revision count increases
+- On the next `tofu plan`, you'll see a warning about the drift
+- To reconcile, increment `value_wo_version` to overwrite with your intended value
+
+**Note:** Not all gopass backends support versioning. For backends without version history
+(e.g., some mount types), `revision_count` will always be `1` if the secret exists.
+
+#### Write-Only Behavior
+
+The `value_wo` attribute follows the [Terraform write-only attributes pattern](https://developer.hashicorp.com/terraform/language/resources/ephemeral#best-practices-for-working-with-ephemeral-resources):
+
+- The value is sent to gopass but **never stored** in state or plan files
+- Terraform cannot detect drift in the actual secret value
+- To update the secret, increment `value_wo_version`
+- This pattern matches AWS, Azure, and Google providers for sensitive values
+
+#### Import
+
+Existing secrets can be imported:
+
+```bash
+tofu import gopass_secret.api_key "env/terraform/scaleway/api_key"
+```
+
+After import, set `value_wo` and `value_wo_version` in your configuration.
 
 ## How It Works
 

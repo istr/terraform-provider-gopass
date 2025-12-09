@@ -13,6 +13,7 @@ import (
 
 	"github.com/gopasspw/gopass/pkg/gopass"
 	"github.com/gopasspw/gopass/pkg/gopass/api"
+	"github.com/gopasspw/gopass/pkg/gopass/secrets"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
@@ -286,4 +287,111 @@ func (c *GopassClient) GetEnvSecrets(ctx context.Context, prefix string) (map[st
 	}
 
 	return result, nil
+}
+
+// SetSecret writes a secret to the gopass store.
+// The value becomes the first line (password) of the secret.
+func (c *GopassClient) SetSecret(ctx context.Context, path string, value string) error {
+	if err := c.ensureStore(ctx); err != nil {
+		return err
+	}
+
+	tflog.Debug(ctx, "Writing secret", map[string]interface{}{
+		"path": path,
+	})
+
+	// Create a new secret object and set the password
+	secret := secrets.New()
+	secret.SetPassword(value)
+
+	// Set the secret in the store
+	if err := c.store.Set(ctx, path, secret); err != nil {
+		return fmt.Errorf("failed to write secret %q: %w", path, err)
+	}
+
+	tflog.Debug(ctx, "Successfully wrote secret", map[string]interface{}{
+		"path": path,
+	})
+
+	return nil
+}
+
+// RemoveSecret removes a secret from the gopass store.
+func (c *GopassClient) RemoveSecret(ctx context.Context, path string) error {
+	if err := c.ensureStore(ctx); err != nil {
+		return err
+	}
+
+	tflog.Debug(ctx, "Removing secret", map[string]interface{}{
+		"path": path,
+	})
+
+	if err := c.store.Remove(ctx, path); err != nil {
+		return fmt.Errorf("failed to remove secret %q: %w", path, err)
+	}
+
+	tflog.Debug(ctx, "Successfully removed secret", map[string]interface{}{
+		"path": path,
+	})
+
+	return nil
+}
+
+// SecretExists checks if a secret exists at the given path.
+func (c *GopassClient) SecretExists(ctx context.Context, path string) (bool, error) {
+	if err := c.ensureStore(ctx); err != nil {
+		return false, err
+	}
+
+	exists, err := c.store.Get(ctx, path, "latest")
+	if err != nil {
+		return false, fmt.Errorf("failed to check if secret %q exists: %w", path, err)
+	}
+
+	return (exists != nil), nil
+}
+
+// GetRevisionCount returns the number of revisions for a secret.
+// This is used for drift detection - if the count changes, someone modified the secret externally.
+//
+// Returns:
+//   - 0 if the secret doesn't exist
+//   - 1 if the secret exists but the backend doesn't support versioning (e.g., some mount types)
+//   - N (actual count) if the backend supports versioning (git-backed stores)
+//
+// Errors from the Revisions() call are logged but not returned - we fall back to
+// existence check in that case, as not all backends support revision history.
+func (c *GopassClient) GetRevisionCount(ctx context.Context, path string) (int64, error) {
+	if err := c.ensureStore(ctx); err != nil {
+		return 0, err
+	}
+
+	// First check if secret exists
+	exists, err := c.store.Get(ctx, path, "latest")
+	if err != nil {
+		return 0, fmt.Errorf("failed to check if secret %q exists: %w", path, err)
+	}
+	if exists == nil {
+		return 0, nil
+	}
+
+	// Try to get revision count - not all backends support this.
+	// Currently, this is also not yet implemented in the API.
+	revisions, err := c.store.Revisions(ctx, path)
+	if err != nil {
+		// Backend doesn't support revisions or other error
+		// Fall back to "1" (exists but no version info)
+		tflog.Debug(ctx, "Revisions() not supported or failed, falling back to existence check", map[string]interface{}{
+			"path":  path,
+			"error": err.Error(),
+		})
+		return 1, nil
+	}
+
+	if len(revisions) == 0 {
+		// Secret exists but no revisions reported - treat as 1
+		return 1, nil
+	}
+
+	return int64(len(revisions)), nil
 }

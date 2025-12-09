@@ -2,8 +2,6 @@ module git.ingo-struck.com/opentofu/terraform-provider-gopass
 
 go 1.22.1
 
-toolchain go1.23.5
-
 require (
 	github.com/gopasspw/gopass v1.15.14
 	github.com/hashicorp/terraform-plugin-framework v1.14.0

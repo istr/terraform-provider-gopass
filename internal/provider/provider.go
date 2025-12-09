@@ -121,9 +121,11 @@ func (p *GopassProvider) Configure(ctx context.Context, req provider.ConfigureRe
 	resp.EphemeralResourceData = client
 }
 
-// Resources returns an empty slice - this provider only provides ephemeral resources.
+// Resources returns the resources this provider offers.
 func (p *GopassProvider) Resources(ctx context.Context) []func() resource.Resource {
-	return []func() resource.Resource{}
+	return []func() resource.Resource{
+		NewSecretResource,
+	}
 }
 
 // DataSources returns an empty slice - this provider only provides ephemeral resources.
