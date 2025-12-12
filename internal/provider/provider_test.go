@@ -91,6 +91,46 @@ func TestProviderConfigure_SetsEphemeralResourceData(t *testing.T) {
 	}
 }
 
+func TestProviderConfigure_ConfigError(t *testing.T) {
+	ctx := context.Background()
+	p := &GopassProvider{version: "test"}
+
+	// Get schema first
+	schemaReq := provider.SchemaRequest{}
+	schemaResp := &provider.SchemaResponse{}
+	p.Schema(ctx, schemaReq, schemaResp)
+
+	// Create an INVALID config (wrong type for store_path - bool instead of string)
+	configValue := tftypes.NewValue(tftypes.Object{
+		AttributeTypes: map[string]tftypes.Type{
+			"store_path": tftypes.Bool, // Wrong type!
+		},
+	}, map[string]tftypes.Value{
+		"store_path": tftypes.NewValue(tftypes.Bool, true),
+	})
+
+	req := provider.ConfigureRequest{
+		Config: tfsdk.Config{
+			Schema: schemaResp.Schema,
+			Raw:    configValue,
+		},
+	}
+	resp := &provider.ConfigureResponse{}
+
+	// Call Configure - should fail due to type mismatch
+	p.Configure(ctx, req, resp)
+
+	// We expect an error
+	if !resp.Diagnostics.HasError() {
+		t.Error("Expected Configure() to return errors for invalid config type")
+	}
+
+	// Client should not be set when there's an error
+	if resp.EphemeralResourceData != nil {
+		t.Error("EphemeralResourceData should be nil when config parsing fails")
+	}
+}
+
 func TestProviderConfigure_WithStorePath(t *testing.T) {
 	ctx := context.Background()
 	p := &GopassProvider{version: "test"}
