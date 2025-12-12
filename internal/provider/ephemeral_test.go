@@ -172,6 +172,56 @@ func TestSecretEphemeralResource_Open(t *testing.T) {
 	}
 }
 
+func TestSecretEphemeralResource_Open_ConfigGetError(t *testing.T) {
+	r := &SecretEphemeralResource{}
+	client := NewGopassClient("")
+	r.client = client
+
+	ctx := context.Background()
+	schemaReq := ephemeral.SchemaRequest{}
+	schemaResp := &ephemeral.SchemaResponse{}
+	r.Schema(ctx, schemaReq, schemaResp)
+
+	// Create a mismatched schema/value combination to trigger Config.Get error
+	// Use a wrong type in the raw value that doesn't match the schema
+	wrongConfigValue := tftypes.NewValue(tftypes.Object{
+		AttributeTypes: map[string]tftypes.Type{
+			"path":  tftypes.Number, // Wrong type - schema expects String
+			"value": tftypes.String,
+		},
+	}, map[string]tftypes.Value{
+		"path":  tftypes.NewValue(tftypes.Number, 123), // Wrong type
+		"value": tftypes.NewValue(tftypes.String, nil),
+	})
+
+	resultRaw := tftypes.NewValue(tftypes.Object{
+		AttributeTypes: map[string]tftypes.Type{
+			"path":  tftypes.String,
+			"value": tftypes.String,
+		},
+	}, nil)
+
+	req := ephemeral.OpenRequest{
+		Config: tfsdk.Config{
+			Schema: schemaResp.Schema,
+			Raw:    wrongConfigValue,
+		},
+	}
+	resp := &ephemeral.OpenResponse{
+		Result: tfsdk.EphemeralResultData{
+			Schema: schemaResp.Schema,
+			Raw:    resultRaw,
+		},
+	}
+
+	r.Open(ctx, req, resp)
+
+	// Should have an error since Config.Get failed due to type mismatch
+	if !resp.Diagnostics.HasError() {
+		t.Error("expected error for Config.Get failure due to type mismatch")
+	}
+}
+
 func TestSecretEphemeralResource_Open_NotFound(t *testing.T) {
 	r := &SecretEphemeralResource{}
 	mockStore := newMockStore()
