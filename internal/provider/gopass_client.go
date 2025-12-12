@@ -79,16 +79,6 @@ func (c *GopassClient) ensureStore(ctx context.Context) error {
 		return c.wrapStoreError(err)
 	}
 
-	if store == nil {
-		return fmt.Errorf("gopass store initialization returned nil\n\n" +
-			"This usually means gopass is not properly configured. Please run:\n" +
-			"  gopass init\n\n" +
-			"Or specify a store_path in the provider configuration:\n" +
-			"  provider \"gopass\" {\n" +
-			"    store_path = \"/path/to/your/password-store\"\n" +
-			"  }")
-	}
-
 	c.store = store
 	tflog.Debug(ctx, "Gopass store initialized successfully")
 	return nil
