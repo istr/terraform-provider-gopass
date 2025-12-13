@@ -6,6 +6,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -386,24 +387,19 @@ func (r *SecretResource) Delete(ctx context.Context, req resource.DeleteRequest,
 	})
 
 	if deleteOnRemove {
-		// Check if secret exists before deleting
-		exists, err := r.client.SecretExists(ctx, secretPath)
-		if err != nil {
-			resp.Diagnostics.AddWarning(
-				"Failed to check secret existence",
-				fmt.Sprintf("Could not verify if secret exists at %q: %s", secretPath, err.Error()),
-			)
-			return
-		}
-
-		if exists {
-			if err := r.client.RemoveSecret(ctx, secretPath); err != nil {
+		if err := r.client.RemoveSecret(ctx, secretPath); err != nil {
+			// Ignore "not found" errors - the secret may have been deleted externally
+			if !isNotFoundError(err) {
 				resp.Diagnostics.AddError(
 					"Failed to remove secret",
 					fmt.Sprintf("Could not remove secret from gopass at %q: %s", secretPath, err.Error()),
 				)
 				return
 			}
+			tflog.Debug(ctx, "Secret already deleted externally", map[string]interface{}{
+				"path": secretPath,
+			})
+		} else {
 			tflog.Info(ctx, "Removed gopass secret", map[string]interface{}{
 				"path": secretPath,
 			})
@@ -413,6 +409,15 @@ func (r *SecretResource) Delete(ctx context.Context, req resource.DeleteRequest,
 			"path": secretPath,
 		})
 	}
+}
+
+// isNotFoundError checks if an error indicates a secret was not found.
+func isNotFoundError(err error) bool {
+	if err == nil {
+		return false
+	}
+	errStr := err.Error()
+	return strings.Contains(errStr, "not found") || strings.Contains(errStr, "does not exist")
 }
 
 func (r *SecretResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
