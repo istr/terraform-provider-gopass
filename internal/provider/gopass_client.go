@@ -131,26 +131,6 @@ func (c *GopassClient) wrapStoreError(err error) error {
 		"  }", err)
 }
 
-// Close closes the gopass store and releases resources.
-func (c *GopassClient) Close(ctx context.Context) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if c.store == nil {
-		return
-	}
-
-	// The gopass API store implements io.Closer through the api.Gopass type
-	if closer, ok := c.store.(interface{ Close(context.Context) error }); ok {
-		if err := closer.Close(ctx); err != nil {
-			tflog.Warn(ctx, "Error closing gopass store", map[string]interface{}{
-				"error": err.Error(),
-			})
-		}
-	}
-	c.store = nil
-}
-
 // GetSecret retrieves a single secret by path.
 // Returns the password (first line) of the secret.
 func (c *GopassClient) GetSecret(ctx context.Context, path string) (string, error) {
@@ -176,32 +156,6 @@ func (c *GopassClient) GetSecret(ctx context.Context, path string) (string, erro
 	})
 
 	return password, nil
-}
-
-// GetSecretFull retrieves a secret with all its key-value pairs.
-// Returns the password and a map of additional fields.
-func (c *GopassClient) GetSecretFull(ctx context.Context, path string) (password string, fields map[string]string, err error) {
-	err = c.ensureStore(ctx)
-	if err != nil {
-		return "", nil, err
-	}
-
-	secret, err := c.store.Get(ctx, path, "latest")
-	if err != nil {
-		return "", nil, fmt.Errorf("failed to get secret %q: %w", path, err)
-	}
-
-	password = secret.Password()
-	fields = make(map[string]string)
-
-	// Get all keys and their values
-	for _, key := range secret.Keys() {
-		if value, ok := secret.Get(key); ok {
-			fields[key] = value
-		}
-	}
-
-	return password, fields, nil
 }
 
 // ListSecrets lists all secrets under a given prefix.

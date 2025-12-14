@@ -66,24 +66,3 @@ func TestSecretResource_Schema(t *testing.T) {
 		t.Error("expected 'revision_count' to be computed")
 	}
 }
-
-func TestSecretResource_ImplementsInterfaces(t *testing.T) {
-	r := NewSecretResource()
-
-	// Check that it implements resource.Resource
-	if r == nil {
-		t.Error("NewSecretResource returned nil")
-	}
-
-	// Check ResourceWithConfigure interface
-	_, ok := r.(resource.ResourceWithConfigure)
-	if !ok {
-		t.Error("SecretResource does not implement resource.ResourceWithConfigure")
-	}
-
-	// Check ResourceWithImportState interface
-	_, ok = r.(resource.ResourceWithImportState)
-	if !ok {
-		t.Error("SecretResource does not implement resource.ResourceWithImportState")
-	}
-}

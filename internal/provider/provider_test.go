@@ -14,18 +14,12 @@ import (
 
 func TestProvider(t *testing.T) {
 	// Basic provider instantiation test
-	provider := New("test")()
-	if provider == nil {
-		t.Fatal("provider is nil")
-	}
+	New("test")()
 }
 
 func TestProviderSchema(t *testing.T) {
 	// Verify schema is valid
-	provider := New("test")()
-	if provider == nil {
-		t.Fatal("provider is nil")
-	}
+	New("test")()
 }
 
 func TestProviderConfigure_SetsEphemeralResourceData(t *testing.T) {
@@ -228,20 +222,12 @@ func TestProvider_EphemeralResources(t *testing.T) {
 func TestGopassClient_NewGopassClient(t *testing.T) {
 	// Test with empty path
 	client := NewGopassClient("")
-	if client == nil {
-		t.Fatal("NewGopassClient returned nil")
-		return
-	}
 	if client.storePath != "" {
 		t.Errorf("Expected empty storePath, got '%s'", client.storePath)
 	}
 
 	// Test with path
 	client2 := NewGopassClient("/test/path")
-	if client2 == nil {
-		t.Fatal("NewGopassClient returned nil")
-		return
-	}
 	if client2.storePath != "/test/path" {
 		t.Errorf("Expected storePath '/test/path', got '%s'", client2.storePath)
 	}

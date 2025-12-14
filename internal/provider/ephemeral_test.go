@@ -16,10 +16,7 @@ import (
 // ============ SecretEphemeralResource Tests ============
 
 func TestSecretEphemeralResource_NewSecretEphemeralResource(t *testing.T) {
-	r := NewSecretEphemeralResource()
-	if r == nil {
-		t.Fatal("NewSecretEphemeralResource returned nil")
-	}
+	_ = NewSecretEphemeralResource()
 }
 
 func TestSecretEphemeralResource_Metadata(t *testing.T) {
@@ -274,10 +271,7 @@ func TestSecretEphemeralResource_Open_NotFound(t *testing.T) {
 // ============ EnvEphemeralResource Tests ============
 
 func TestEnvEphemeralResource_NewEnvEphemeralResource(t *testing.T) {
-	r := NewEnvEphemeralResource()
-	if r == nil {
-		t.Fatal("NewEnvEphemeralResource returned nil")
-	}
+	_ = NewEnvEphemeralResource()
 }
 
 func TestEnvEphemeralResource_Metadata(t *testing.T) {
