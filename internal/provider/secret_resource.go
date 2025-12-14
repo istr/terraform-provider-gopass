@@ -413,9 +413,6 @@ func (r *SecretResource) Delete(ctx context.Context, req resource.DeleteRequest,
 
 // isNotFoundError checks if an error indicates a secret was not found.
 func isNotFoundError(err error) bool {
-	if err == nil {
-		return false
-	}
 	errStr := err.Error()
 	return strings.Contains(errStr, "not found") || strings.Contains(errStr, "does not exist")
 }
