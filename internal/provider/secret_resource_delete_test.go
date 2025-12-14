@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
@@ -214,5 +215,44 @@ func TestSecretResource_Delete_RemoveError(t *testing.T) {
 	// Should have error for non-"not found" errors
 	if !resp.Diagnostics.HasError() {
 		t.Error("expected error for remove failure")
+	}
+}
+
+func TestSecretResource_Delete_StateGetError(t *testing.T) {
+	r := &SecretResource{}
+	client := NewGopassClient("")
+	r.client = client
+	ctx := context.Background()
+
+	incompatibleSchema := schema.Schema{
+		Attributes: map[string]schema.Attribute{
+			"path": schema.Int64Attribute{Required: true},
+		},
+	}
+
+	stateValue := tftypes.NewValue(tftypes.Object{
+		AttributeTypes: map[string]tftypes.Type{
+			"path": tftypes.Number,
+		},
+	}, map[string]tftypes.Value{
+		"path": tftypes.NewValue(tftypes.Number, 123),
+	})
+
+	req := resource.DeleteRequest{
+		State: tfsdk.State{
+			Schema: incompatibleSchema,
+			Raw:    stateValue,
+		},
+	}
+	resp := &resource.DeleteResponse{
+		State: tfsdk.State{
+			Schema: incompatibleSchema,
+		},
+	}
+
+	r.Delete(ctx, req, resp)
+
+	if !resp.Diagnostics.HasError() {
+		t.Error("expected error from State.Get but got none")
 	}
 }
