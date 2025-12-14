@@ -216,11 +216,11 @@ func (r *SecretResource) Create(ctx context.Context, req resource.CreateRequest,
 	// Get revision count for drift detection
 	revCount, err := r.client.GetRevisionCount(ctx, secretPath)
 	if err != nil {
+		// Log error but proceed with revCount=0 (disables drift detection)
 		tflog.Warn(ctx, "Could not get revision count", map[string]interface{}{
 			"path":  secretPath,
 			"error": err.Error(),
 		})
-		revCount = 1 // Fallback: we know it exists
 	}
 	data.RevisionCount = types.Int64Value(revCount)
 
