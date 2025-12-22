@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/ephemeral"
 	"github.com/hashicorp/terraform-plugin-framework/ephemeral/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -23,8 +24,8 @@ type EnvEphemeralResource struct {
 
 // EnvModel describes the data model.
 type EnvModel struct {
-	Path   types.String `tfsdk:"path"`
-	Values types.Map    `tfsdk:"values"`
+	Path        types.String  `tfsdk:"path"`
+	Credentials types.Dynamic `tfsdk:"credentials"`
 }
 
 // NewEnvEphemeralResource creates a new instance.
@@ -60,9 +61,9 @@ ephemeral "gopass_env" "scaleway" {
 }
 
 provider "scaleway" {
-  access_key = ephemeral.gopass_env.scaleway.values["SCW_ACCESS_KEY"]
-  secret_key = ephemeral.gopass_env.scaleway.values["SCW_SECRET_KEY"]
-  project_id = ephemeral.gopass_env.scaleway.values["SCW_DEFAULT_PROJECT_ID"]
+  access_key = ephemeral.gopass_env.scaleway.credentials.SCW_ACCESS_KEY
+  secret_key = ephemeral.gopass_env.scaleway.credentials.SCW_SECRET_KEY
+  project_id = ephemeral.gopass_env.scaleway.credentials.SCW_DEFAULT_PROJECT_ID
 }
 ` + "```" + `
 
@@ -79,12 +80,11 @@ provider "scaleway" {
 				MarkdownDescription: "Path prefix in the gopass store (e.g., `env/terraform/scaleway/istr`).",
 				Required:            true,
 			},
-			"values": schema.MapAttribute{
-				Description:         "Map of secret names to their values.",
-				MarkdownDescription: "Map of secret names to their values.",
+			"credentials": schema.DynamicAttribute{
+				Description:         "Object with secret names as attributes (accessible via dot-notation).",
+				MarkdownDescription: "Object with secret names as attributes (accessible via dot-notation).",
 				Computed:            true,
 				Sensitive:           true,
-				ElementType:         types.StringType,
 			},
 		},
 	}
@@ -138,10 +138,21 @@ func (r *EnvEphemeralResource) Open(ctx context.Context, req ephemeral.OpenReque
 		)
 	}
 
-	// Convert to types.Map
-	// types.MapValueFrom with types.StringType and map[string]string is guaranteed to succeed
-	mapValue, _ := types.MapValueFrom(ctx, types.StringType, values)
-	data.Values = mapValue
+	// Convert map[string]string to an object type for dot-notation access
+	// Build attribute types - all are strings
+	attrTypes := make(map[string]attr.Type)
+	attrValues := make(map[string]attr.Value)
+	for key, value := range values {
+		attrTypes[key] = types.StringType
+		attrValues[key] = types.StringValue(value)
+	}
+
+	// Create object value - cannot fail with valid string types/values
+	objValue, _ := types.ObjectValue(attrTypes, attrValues)
+
+	// Convert to dynamic
+	dynamicValue := types.DynamicValue(objValue)
+	data.Credentials = dynamicValue
 
 	// Set result - NEVER written to state
 	resp.Diagnostics.Append(resp.Result.Set(ctx, &data)...)

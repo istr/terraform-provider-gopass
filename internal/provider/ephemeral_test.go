@@ -299,8 +299,8 @@ func TestEnvEphemeralResource_Schema(t *testing.T) {
 	if _, ok := resp.Schema.Attributes["path"]; !ok {
 		t.Error("expected 'path' attribute in schema")
 	}
-	if _, ok := resp.Schema.Attributes["values"]; !ok {
-		t.Error("expected 'values' attribute in schema")
+	if _, ok := resp.Schema.Attributes["credentials"]; !ok {
+		t.Error("expected 'credentials' attribute in schema")
 	}
 
 	// Verify path is required
@@ -309,13 +309,13 @@ func TestEnvEphemeralResource_Schema(t *testing.T) {
 		t.Error("expected 'path' to be required")
 	}
 
-	// Verify values is computed and sensitive
-	valuesAttr := resp.Schema.Attributes["values"]
-	if !valuesAttr.IsComputed() {
-		t.Error("expected 'values' to be computed")
+	// Verify credentials is computed and sensitive
+	credentialsAttr := resp.Schema.Attributes["credentials"]
+	if !credentialsAttr.IsComputed() {
+		t.Error("expected 'credentials' to be computed")
 	}
-	if !valuesAttr.IsSensitive() {
-		t.Error("expected 'values' to be sensitive")
+	if !credentialsAttr.IsSensitive() {
+		t.Error("expected 'credentials' to be sensitive")
 	}
 }
 
@@ -392,18 +392,18 @@ func TestEnvEphemeralResource_Open(t *testing.T) {
 
 	configValue := tftypes.NewValue(tftypes.Object{
 		AttributeTypes: map[string]tftypes.Type{
-			"path":   tftypes.String,
-			"values": tftypes.Map{ElementType: tftypes.String},
+			"path":        tftypes.String,
+			"credentials": tftypes.DynamicPseudoType,
 		},
 	}, map[string]tftypes.Value{
-		"path":   tftypes.NewValue(tftypes.String, "env/test"),
-		"values": tftypes.NewValue(tftypes.Map{ElementType: tftypes.String}, nil),
+		"path":        tftypes.NewValue(tftypes.String, "env/test"),
+		"credentials": tftypes.NewValue(tftypes.DynamicPseudoType, nil),
 	})
 
 	resultRaw := tftypes.NewValue(tftypes.Object{
 		AttributeTypes: map[string]tftypes.Type{
-			"path":   tftypes.String,
-			"values": tftypes.Map{ElementType: tftypes.String},
+			"path":        tftypes.String,
+			"credentials": tftypes.DynamicPseudoType,
 		},
 	}, nil)
 
@@ -441,18 +441,18 @@ func TestEnvEphemeralResource_Open_Empty(t *testing.T) {
 
 	configValue := tftypes.NewValue(tftypes.Object{
 		AttributeTypes: map[string]tftypes.Type{
-			"path":   tftypes.String,
-			"values": tftypes.Map{ElementType: tftypes.String},
+			"path":        tftypes.String,
+			"credentials": tftypes.DynamicPseudoType,
 		},
 	}, map[string]tftypes.Value{
-		"path":   tftypes.NewValue(tftypes.String, "empty/path"),
-		"values": tftypes.NewValue(tftypes.Map{ElementType: tftypes.String}, nil),
+		"path":        tftypes.NewValue(tftypes.String, "empty/path"),
+		"credentials": tftypes.NewValue(tftypes.DynamicPseudoType, nil),
 	})
 
 	resultRaw := tftypes.NewValue(tftypes.Object{
 		AttributeTypes: map[string]tftypes.Type{
-			"path":   tftypes.String,
-			"values": tftypes.Map{ElementType: tftypes.String},
+			"path":        tftypes.String,
+			"credentials": tftypes.DynamicPseudoType,
 		},
 	}, nil)
 
@@ -475,6 +475,11 @@ func TestEnvEphemeralResource_Open_Empty(t *testing.T) {
 	if resp.Diagnostics.HasError() {
 		t.Errorf("unexpected error: %v", resp.Diagnostics)
 	}
+
+	// Verify that we got a warning
+	if resp.Diagnostics.WarningsCount() == 0 {
+		t.Error("expected warning for no secrets found")
+	}
 }
 
 func TestEnvEphemeralResource_Open_GetEnvSecretsError(t *testing.T) {
@@ -493,18 +498,18 @@ func TestEnvEphemeralResource_Open_GetEnvSecretsError(t *testing.T) {
 
 	configValue := tftypes.NewValue(tftypes.Object{
 		AttributeTypes: map[string]tftypes.Type{
-			"path":   tftypes.String,
-			"values": tftypes.Map{ElementType: tftypes.String},
+			"path":        tftypes.String,
+			"credentials": tftypes.DynamicPseudoType,
 		},
 	}, map[string]tftypes.Value{
-		"path":   tftypes.NewValue(tftypes.String, "env/test"),
-		"values": tftypes.NewValue(tftypes.Map{ElementType: tftypes.String}, nil),
+		"path":        tftypes.NewValue(tftypes.String, "env/test"),
+		"credentials": tftypes.NewValue(tftypes.DynamicPseudoType, nil),
 	})
 
 	resultRaw := tftypes.NewValue(tftypes.Object{
 		AttributeTypes: map[string]tftypes.Type{
-			"path":   tftypes.String,
-			"values": tftypes.Map{ElementType: tftypes.String},
+			"path":        tftypes.String,
+			"credentials": tftypes.DynamicPseudoType,
 		},
 	}, nil)
 
@@ -543,18 +548,18 @@ func TestEnvEphemeralResource_Open_ConfigGetError(t *testing.T) {
 	// Use a wrong type in the raw value that doesn't match the schema
 	wrongConfigValue := tftypes.NewValue(tftypes.Object{
 		AttributeTypes: map[string]tftypes.Type{
-			"path":   tftypes.Number, // Wrong type - schema expects String
-			"values": tftypes.Map{ElementType: tftypes.String},
+			"path":        tftypes.Number, // Wrong type - schema expects String
+			"credentials": tftypes.DynamicPseudoType,
 		},
 	}, map[string]tftypes.Value{
-		"path":   tftypes.NewValue(tftypes.Number, 123), // Wrong type
-		"values": tftypes.NewValue(tftypes.Map{ElementType: tftypes.String}, nil),
+		"path":        tftypes.NewValue(tftypes.Number, 123), // Wrong type
+		"credentials": tftypes.NewValue(tftypes.DynamicPseudoType, nil),
 	})
 
 	resultRaw := tftypes.NewValue(tftypes.Object{
 		AttributeTypes: map[string]tftypes.Type{
-			"path":   tftypes.String,
-			"values": tftypes.Map{ElementType: tftypes.String},
+			"path":        tftypes.String,
+			"credentials": tftypes.DynamicPseudoType,
 		},
 	}, nil)
 

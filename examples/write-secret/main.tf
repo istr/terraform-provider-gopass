@@ -81,7 +81,7 @@ ephemeral "gopass_env" "db_credentials" {
 # Output shows how to use existing credentials
 # (values are ephemeral, only available during apply)
 output "db_host" {
-  value       = ephemeral.gopass_env.db_credentials.values["host"]
+  value       = ephemeral.gopass_env.db_credentials.credentials.host
   ephemeral   = true
   description = "Database host from gopass"
 }

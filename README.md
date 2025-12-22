@@ -92,9 +92,9 @@ ephemeral "gopass_env" "scaleway" {
 }
 
 provider "scaleway" {
-  access_key = ephemeral.gopass_env.scaleway.values["SCW_ACCESS_KEY"]
-  secret_key = ephemeral.gopass_env.scaleway.values["SCW_SECRET_KEY"]
-  project_id = ephemeral.gopass_env.scaleway.values["SCW_DEFAULT_PROJECT_ID"]
+  access_key = ephemeral.gopass_env.scaleway.credentials.SCW_ACCESS_KEY
+  secret_key = ephemeral.gopass_env.scaleway.credentials.SCW_SECRET_KEY
+  project_id = ephemeral.gopass_env.scaleway.credentials.SCW_DEFAULT_PROJECT_ID
 }
 ```
 

@@ -82,7 +82,7 @@ ephemeral "gopass_env" "db" {
 
 # Use in provider configuration (ephemeral-aware)
 provider "postgresql" {
-  password = ephemeral.gopass_env.db.values["password"]
+  password = ephemeral.gopass_env.db.credentials.password
 }
 ` + "```" + `
 `,
