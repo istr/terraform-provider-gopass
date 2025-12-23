@@ -75,6 +75,10 @@ provider "gopass" {
 
 ### Reading a Credential Set (gopassenv style)
 
+The `gopass_env` ephemeral resource reads all secrets under a path and makes them accessible via dot-notation. It supports both flat and nested/hierarchical path structures.
+
+#### Flat Structure (Immediate Children)
+
 Given this gopass structure:
 
 ```
@@ -84,7 +88,7 @@ env/terraform/scaleway/istr/
 └── SCW_DEFAULT_PROJECT_ID
 ```
 
-Read all as a map:
+Read all as a flat object:
 
 ```hcl
 ephemeral "gopass_env" "scaleway" {
@@ -97,6 +101,55 @@ provider "scaleway" {
   project_id = ephemeral.gopass_env.scaleway.credentials.SCW_DEFAULT_PROJECT_ID
 }
 ```
+
+#### Nested Structure (Deep Hierarchies)
+
+The provider automatically converts slash-separated paths into nested object structures:
+
+Given this gopass structure:
+
+```
+env/terraform/cloud/aws/
+├── REGION
+├── API/
+│   ├── v2/
+│   │   ├── ACCESS_KEY
+│   │   └── SECRET_KEY
+│   └── v1/
+│       └── LEGACY_TOKEN
+└── database/
+    └── prod/
+        ├── HOST
+        └── PASSWORD
+```
+
+Access nested paths using dot-notation:
+
+```hcl
+ephemeral "gopass_env" "aws" {
+  path = "env/terraform/cloud/aws"
+}
+
+provider "aws" {
+  region     = ephemeral.gopass_env.aws.credentials.REGION
+  # Nested paths: API/v2/ACCESS_KEY becomes credentials.API.v2.ACCESS_KEY
+  access_key = ephemeral.gopass_env.aws.credentials.API.v2.ACCESS_KEY
+  secret_key = ephemeral.gopass_env.aws.credentials.API.v2.SECRET_KEY
+}
+
+# Access database credentials (2 levels deep)
+resource "postgresql_database" "main" {
+  name = "mydb"
+  # database/prod/HOST becomes credentials.database.prod.HOST
+  connection_string = "postgres://${ephemeral.gopass_env.aws.credentials.database.prod.HOST}:5432"
+}
+```
+
+**Key features:**
+- 🌳 **Recursive**: Reads all secrets at any depth under the specified path
+- 📂 **Automatic nesting**: Slash-separated paths become nested objects (`API/v2/KEY` → `credentials.API.v2.KEY`)
+- 🔀 **Mixed depths**: Supports both flat and nested secrets in the same tree
+- ⚡ **Efficient**: Single gopass query for entire tree
 
 ### Reading Individual Secrets
 
@@ -131,7 +184,7 @@ Reads a single secret from the gopass store.
 
 ### gopass_env
 
-Reads all secrets under a path as a key-value map.
+Reads all secrets under a path recursively as a nested object structure.
 
 #### Arguments
 
@@ -143,7 +196,14 @@ Reads all secrets under a path as a key-value map.
 
 | Name | Type | Description |
 |------|------|-------------|
-| `values` | map(string) | Map of secret names to values |
+| `credentials` | dynamic object | Nested object with secrets accessible via dot-notation. Slash-separated paths become nested: `API/v2/KEY` → `credentials.API.v2.KEY` |
+
+#### Behavior
+
+- **Recursive**: Includes all secrets at any depth under the path
+- **Automatic nesting**: Converts slash-separated paths to nested objects
+- **Mixed structures**: Supports both flat and nested secrets in the same tree
+- **Dot-notation access**: All secrets accessible via standard Terraform dot-notation
 
 ## Managed Resources
 

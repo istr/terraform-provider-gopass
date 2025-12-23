@@ -207,10 +207,52 @@ func (c *GopassClient) ListSecrets(ctx context.Context, prefix string) ([]string
 	return results, nil
 }
 
-// GetEnvSecrets reads all immediate child secrets under a path and returns them as a map.
-// The map keys are the secret names (relative to prefix), values are the passwords.
+// ListSecretsRecursive lists all secrets under a given prefix recursively.
+// Returns all secrets at any depth under the prefix.
+func (c *GopassClient) ListSecretsRecursive(ctx context.Context, prefix string) ([]string, error) {
+	if err := c.ensureStore(ctx); err != nil {
+		return nil, err
+	}
+
+	// Normalize prefix
+	prefix = strings.TrimSuffix(prefix, "/")
+
+	tflog.Debug(ctx, "Listing secrets recursively", map[string]interface{}{
+		"prefix": prefix,
+	})
+
+	// List all secrets
+	allSecrets, err := c.store.List(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list secrets: %w", err)
+	}
+
+	// Filter to all secrets under prefix (recursive)
+	var results []string
+	prefixWithSlash := prefix + "/"
+
+	for _, secretPath := range allSecrets {
+		// Must start with prefix
+		if !strings.HasPrefix(secretPath, prefixWithSlash) {
+			continue
+		}
+
+		results = append(results, secretPath)
+	}
+
+	tflog.Debug(ctx, "Listed secrets recursively", map[string]interface{}{
+		"prefix": prefix,
+		"count":  len(results),
+	})
+
+	return results, nil
+}
+
+// GetEnvSecrets reads all secrets under a path (recursively) and returns them as a map.
+// The map keys are the secret paths relative to the prefix (with slashes preserved),
+// and values are the passwords.
 func (c *GopassClient) GetEnvSecrets(ctx context.Context, prefix string) (map[string]string, error) {
-	secretPaths, err := c.ListSecrets(ctx, prefix)
+	secretPaths, err := c.ListSecretsRecursive(ctx, prefix)
 	if err != nil {
 		return nil, err
 	}
@@ -219,7 +261,7 @@ func (c *GopassClient) GetEnvSecrets(ctx context.Context, prefix string) (map[st
 	result := make(map[string]string)
 
 	for _, fullPath := range secretPaths {
-		// Extract key name from path
+		// Extract key name from path (relative path with slashes preserved)
 		key := strings.TrimPrefix(fullPath, prefix+"/")
 
 		// Get the secret value
