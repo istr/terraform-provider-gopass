@@ -82,7 +82,7 @@ The `gopass_env` ephemeral resource reads all secrets under a path and makes the
 Given this gopass structure:
 
 ```
-env/terraform/scaleway/istr/
+env/terraform/scaleway/acme/
 ├── SCW_ACCESS_KEY
 ├── SCW_SECRET_KEY
 └── SCW_DEFAULT_PROJECT_ID
@@ -92,7 +92,7 @@ Read all as a flat object:
 
 ```hcl
 ephemeral "gopass_env" "scaleway" {
-  path = "env/terraform/scaleway/istr"
+  path = "env/terraform/scaleway/acme"
 }
 
 provider "scaleway" {

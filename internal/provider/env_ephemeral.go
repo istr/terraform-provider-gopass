@@ -50,7 +50,7 @@ Supports both flat and nested/deep path structures.
 This is ideal for reading credential sets with hierarchical organization:
 
 ` + "```" + `
-env/terraform/scaleway/istr/
+env/terraform/scaleway/acme/
 ├── SCW_ACCESS_KEY
 ├── SCW_SECRET_KEY
 ├── SCW_DEFAULT_PROJECT_ID
@@ -66,7 +66,7 @@ env/terraform/scaleway/istr/
 
 ` + "```hcl" + `
 ephemeral "gopass_env" "scaleway" {
-  path = "env/terraform/scaleway/istr"
+  path = "env/terraform/scaleway/acme"
 }
 
 provider "scaleway" {
@@ -102,8 +102,8 @@ provider "aws" {
 
 		Attributes: map[string]schema.Attribute{
 			"path": schema.StringAttribute{
-				Description:         "Path prefix in the gopass store (e.g., 'env/terraform/scaleway/istr').",
-				MarkdownDescription: "Path prefix in the gopass store (e.g., `env/terraform/scaleway/istr`).",
+				Description:         "Path prefix in the gopass store (e.g., 'env/terraform/scaleway/acme').",
+				MarkdownDescription: "Path prefix in the gopass store (e.g., `env/terraform/scaleway/acme`).",
 				Required:            true,
 			},
 			"credentials": schema.DynamicAttribute{

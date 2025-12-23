@@ -6,7 +6,7 @@
 #
 # Prerequisites:
 #   - gopass configured with your GPG key
-#   - Secrets stored at: env/terraform/scaleway/istr/
+#   - Secrets stored at: env/terraform/scaleway/acme/
 #     ├── SCW_ACCESS_KEY
 #     ├── SCW_SECRET_KEY
 #     └── SCW_DEFAULT_PROJECT_ID
@@ -40,7 +40,7 @@ provider "gopass" {
 # -----------------------------------------------------------------------------
 
 ephemeral "gopass_env" "scaleway" {
-  path = "env/terraform/scaleway/istr"
+  path = "env/terraform/scaleway/acme"
 }
 
 provider "scaleway" {
@@ -55,11 +55,11 @@ provider "scaleway" {
 # -----------------------------------------------------------------------------
 
 # ephemeral "gopass_secret" "scw_access_key" {
-#   path = "env/terraform/scaleway/istr/SCW_ACCESS_KEY"
+#   path = "env/terraform/scaleway/acme/SCW_ACCESS_KEY"
 # }
 #
 # ephemeral "gopass_secret" "scw_secret_key" {
-#   path = "env/terraform/scaleway/istr/SCW_SECRET_KEY"
+#   path = "env/terraform/scaleway/acme/SCW_SECRET_KEY"
 # }
 #
 # provider "scaleway" {
